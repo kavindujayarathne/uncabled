@@ -1,0 +1,654 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Uncabled</title>
+  <style>
+    /* ---------- Base ---------- */
+    :root {
+      --bg: #020617;
+      /* page background (very dark navy) */
+      --card: #020b1a;
+      /* panel background */
+      --border: #1f2933;
+      --fg: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    .app {
+      max-width: 931px;
+      margin: 0 auto;
+      padding: 24px 16px 32px;
+    }
+
+    h1 {
+      margin: 0 0 16px 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    /* ---------- Cards / layout ---------- */
+
+    .card {
+      background: var(--card);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+    }
+
+    .top-card {
+      margin-bottom: 16px;
+    }
+
+    .video-shell {
+      margin-bottom: 16px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+    }
+
+    .bottom-card {
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    /* ---------- Top controls ---------- */
+
+    .grid-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 2fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .field-control {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--fg);
+      font-size: 14px;
+    }
+
+    .field-control:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 9px 15px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--fg);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #0b1120;
+      border-color: var(--border);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .status-pill {
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      min-width: 64px;
+      text-align: center;
+      color: var(--fg);
+    }
+
+    /* ---------- Video ---------- */
+
+    #view {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      background: #000;
+      transform: none;
+    }
+
+    /* ---------- Bottom / quality row ---------- */
+
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .quality-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 16px;
+    }
+
+    .quality-group .field-label {
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .small-field {
+      padding: 8px 11px;
+      font-size: 14px;
+    }
+
+    .btn-small {
+      padding: 8px 13px;
+      font-size: 14px;
+    }
+
+    /* ---------- Responsive tweaks ---------- */
+    @media (max-width: 800px) {
+      .grid-top {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        flex-wrap: wrap;
+      }
+    }
+
+    /* ---------- OBS mode: full-screen video, no UI ---------- */
+    body.obs-mode {
+      margin: 0;
+      background: #000;
+    }
+
+    body.obs-mode .app {
+      max-width: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    body.obs-mode h1,
+    body.obs-mode .card,
+    body.obs-mode .top-card,
+    body.obs-mode .bottom-card {
+      display: none;
+    }
+
+    body.obs-mode .video-shell {
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      width: 100vw;
+      aspect-ratio: auto;
+    }
+
+    body.obs-mode #view {
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      background: #000;
+      transform: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <h1>Uncabled</h1>
+
+    <!-- Top card: role / room / WS host + Start/Stop/status -->
+    <div class="card top-card">
+      <div class="grid-top">
+        <div>
+          <div class="field-label">Role</div>
+          <select id="role" class="field-control">
+            <option value="sender">Sender</option>
+            <option value="receiver">Receiver</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="field-label">Room</div>
+          <input id="room" class="field-control" value="default" />
+        </div>
+
+        <div>
+          <div class="field-label">WS Host</div>
+          <input id="wshost" class="field-control" />
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="start" class="btn btn-primary">Start</button>
+        <button id="stop" class="btn" disabled>Stop</button>
+        <span id="stat" class="status-pill">idle</span>
+      </div>
+    </div>
+
+    <!-- Video panel -->
+    <div class="video-shell">
+      <video id="view" playsinline autoplay muted></video>
+    </div>
+
+    <!-- Bottom card: quality + buttons -->
+    <div class="card bottom-card">
+      <div class="bottom-row">
+        <div class="quality-group">
+          <div class="field-label">Quality</div>
+          <select id="quality" class="field-control small-field">
+            <option value="low">Low (640×360)</option>
+            <option value="medium" selected>Medium (1280×720)</option>
+            <option value="high">High (1920×1080)</option>
+          </select>
+        </div>
+
+        <button id="flip" class="btn btn-small">Flip Camera</button>
+        <button id="toggle-audio" class="btn btn-small">Mute Audio</button>
+        <button id="toggle-video" class="btn btn-small">Video Off</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const roleEl = document.getElementById('role');
+    const roomEl = document.getElementById('room');
+    const hostEl = document.getElementById('wshost');
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const statEl = document.getElementById('stat');
+    const viewV = document.getElementById('view');
+    const qualityEl = document.getElementById('quality');
+    const flipBtn = document.getElementById('flip');
+    const toggleAudioB = document.getElementById('toggle-audio');
+    const toggleVideoB = document.getElementById('toggle-video');
+
+    // default WS host based on origin
+    hostEl.value = 'wss://' + location.host;
+
+    const QUALITY = {
+      low: {width: {ideal: 640}, height: {ideal: 360}, frameRate: {ideal: 15}},
+      medium: {width: {ideal: 1280}, height: {ideal: 720}, frameRate: {ideal: 30}},
+      high: {width: {ideal: 1920}, height: {ideal: 1080}, frameRate: {ideal: 30}},
+    };
+
+    let pc = null;
+    let ws = null;
+    let localStream = null;
+
+    // DEFAULT TO FRONT CAMERA
+    let currentFacing = 'user';
+    let currentQuality = 'medium';
+
+    function setStat(s) {
+      statEl.textContent = s;
+    }
+
+    function updateSenderControls() {
+      const isSender = roleEl.value === 'sender';
+      [qualityEl, flipBtn, toggleAudioB, toggleVideoB].forEach(el => {
+        el.disabled = !isSender;
+      });
+    }
+
+    // sync current UI state -> URL (role & room)
+    function syncUrlFromState() {
+      const url = new URL(window.location.href);
+      const role = roleEl.value;
+      const room = roomEl.value.trim();
+
+      if (role === 'sender' || role === 'receiver') {
+        url.searchParams.set('role', role);
+      } else {
+        url.searchParams.delete('role');
+      }
+
+      if (room) {
+        url.searchParams.set('room', room);
+      } else {
+        url.searchParams.delete('room');
+      }
+
+      history.replaceState(null, '', url.toString());
+    }
+
+    updateSenderControls();
+
+    roleEl.addEventListener('change', () => {
+      updateSenderControls();
+      cleanup();
+      syncUrlFromState(); // <<< update URL when role changes
+    });
+
+    roomEl.addEventListener('input', () => {
+      syncUrlFromState(); // <<< update URL while typing room
+    });
+
+    function cleanup() {
+      if (ws) {
+        try {ws.close();} catch { }
+        ws = null;
+      }
+      if (pc) {
+        try {pc.close();} catch { }
+        pc = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      viewV.srcObject = null;
+      setStat('idle');
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    function sendWs(msgObj) {
+      if (!ws) return;
+      const payload = JSON.stringify(msgObj);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      } else if (ws.readyState === WebSocket.CONNECTING) {
+        ws.addEventListener('open', () => ws.send(payload), {once: true});
+      }
+    }
+
+    async function acquireMediaAndBind() {
+      // only for sender
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+      }
+
+      const videoConstraints = {
+        facingMode: currentFacing,
+        ...QUALITY[currentQuality],
+      };
+
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraints,
+        audio: {echoCancellation: true, noiseSuppression: true}
+      });
+
+      viewV.srcObject = localStream;
+      viewV.muted = true;
+      await viewV.play().catch(() => { });
+
+      if (pc) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        const audioTrack = localStream.getAudioTracks()[0];
+        const senders = pc.getSenders();
+
+        let vSender = senders.find(s => s.track && s.track.kind === 'video');
+        let aSender = senders.find(s => s.track && s.track.kind === 'audio');
+
+        if (videoTrack) {
+          if (vSender) {
+            await vSender.replaceTrack(videoTrack);
+          } else {
+            pc.addTrack(videoTrack, localStream);
+          }
+        }
+        if (audioTrack) {
+          if (aSender) {
+            await aSender.replaceTrack(audioTrack);
+          } else {
+            pc.addTrack(audioTrack, localStream);
+          }
+        }
+      }
+    }
+
+    async function start() {
+      cleanup();
+
+      const role = roleEl.value;
+      const room = roomEl.value.trim();
+      const wshost = hostEl.value.trim();
+      if (!room) {setStat('no-room'); return;}
+
+      setStat('connecting');
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      // wss://kavindu-jayarathne.local:8443
+      ws = new WebSocket(wshost);
+
+      ws.onopen = () => {
+        // debugging
+        console.log('WS OPEN');
+        sendWs({type: 'join', roomId: room});
+        // setStat('joined');
+      };
+      ws.onclose = () => {
+        // debugging
+        console.log('WS CLOSE');
+        setStat('ws-closed');
+      };
+      ws.onerror = (e) => {
+        // debugging
+        console.log('WS ERROR', e);
+        setStat('ws-error');
+      };
+
+
+      // create a fresh RTCPeerConnection with event handlers
+      function createPC() {
+        if (pc) { try { pc.close(); } catch {} }
+
+        pc = new RTCPeerConnection({
+          iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
+        });
+
+        pc.onicecandidate = e => {
+          if (e.candidate) {
+            // debugging
+            console.log('ICE CANDIDATE', e.candidate);
+            sendWs({type: 'signal', payload: e.candidate});
+          }
+        };
+
+        pc.ontrack = e => {
+          // debugging
+          console.log('ON TRACK');
+          viewV.srcObject = e.streams[0];
+          if (role === 'receiver') {
+            viewV.muted = false;
+            viewV.play().catch(() => { });
+            setStat('receiving');
+          }
+        };
+      }
+
+      createPC();
+
+      // sender: create fresh pc, add tracks, send offer
+      let mediaReady = false;
+      let peerReady = false;
+
+      async function sendOffer() {
+        createPC();
+        if (localStream) {
+          localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        }
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        });
+        await pc.setLocalDescription(offer);
+        sendWs({type: 'signal', payload: pc.localDescription});
+        setStat('sending');
+      }
+
+      async function trySendOffer() {
+        if (mediaReady && peerReady && role === 'sender') {
+          await sendOffer();
+        }
+      }
+
+      ws.onmessage = async (ev) => {
+        // debugging
+        console.log('WS MSG', ev.data);
+
+        const msg = JSON.parse(ev.data);
+
+        // a peer joined or rejoined the room
+        if (msg.type === 'peer-joined' && role === 'sender') {
+          console.log('Peer joined');
+          peerReady = true;
+          await trySendOffer();
+          return;
+        }
+
+        if (msg.type !== 'signal') return;
+        const p = msg.payload;
+
+        if (p.candidate) {
+          try {
+            await pc.addIceCandidate(p);
+          } catch (e) {
+            console.error('addIceCandidate error', e);
+          }
+        } else if (p.sdp) {
+          // receiver: fresh pc for each new offer
+          if (p.type === 'offer') {
+            createPC();
+            await pc.setRemoteDescription(p);
+            const ans = await pc.createAnswer();
+            await pc.setLocalDescription(ans);
+            sendWs({type: 'signal', payload: pc.localDescription});
+            setStat('receiving');
+          } else {
+            await pc.setRemoteDescription(p);
+          }
+        }
+      };
+
+      if (role === 'sender') {
+        await acquireMediaAndBind();
+        mediaReady = true;
+        setStat('waiting-peer');
+        await trySendOffer();
+      } else {
+        setStat('waiting-offer');
+      }
+    }
+
+    startBtn.onclick = () => {
+      syncUrlFromState(); // make sure URL matches before starting
+      start();
+    };
+
+    stopBtn.onclick = cleanup;
+
+    // quality change → reacquire media (sender only)
+    qualityEl.addEventListener('change', async () => {
+      currentQuality = qualityEl.value;
+      if (roleEl.value === 'sender' && pc) {
+        try {
+          await acquireMediaAndBind();
+        } catch (e) {
+          console.error('quality change getUserMedia error', e);
+        }
+      }
+    });
+
+    // flip camera (sender only)
+    flipBtn.addEventListener('click', async () => {
+      if (roleEl.value !== 'sender' || !pc) return;
+      currentFacing = (currentFacing === 'environment') ? 'user' : 'environment';
+      try {
+        await acquireMediaAndBind();
+      } catch (e) {
+        console.error('flip camera error', e);
+      }
+    });
+
+    // mute / unmute audio
+    toggleAudioB.addEventListener('click', () => {
+      if (!localStream) return;
+      const tracks = localStream.getAudioTracks();
+      if (!tracks.length) return;
+      const track = tracks[0];
+      track.enabled = !track.enabled;
+      toggleAudioB.textContent = track.enabled ? 'Mute Audio' : 'Unmute Audio';
+    });
+
+    // video on / off
+    toggleVideoB.addEventListener('click', () => {
+      if (!localStream) return;
+      const tracks = localStream.getVideoTracks();
+      if (!tracks.length) return;
+      const track = tracks[0];
+      track.enabled = !track.enabled;
+      toggleVideoB.textContent = track.enabled ? 'Video Off' : 'Video On';
+    });
+
+    // ---------- URL params: role, room, autostart, obs ----------
+    const params = new URLSearchParams(location.search);
+
+    const urlRole = params.get('role');
+    if (urlRole === 'sender' || urlRole === 'receiver') {
+      roleEl.value = urlRole;
+      updateSenderControls();
+    }
+
+    const urlRoom = params.get('room');
+    if (urlRoom) {
+      roomEl.value = urlRoom;
+    }
+
+    if (params.get('obs') === '1') {
+      document.body.classList.add('obs-mode');
+    }
+
+    if (params.get('autostart') === '1') {
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          start().catch(console.error);
+        }, 50);
+      });
+    }
+
+    // After loading any params into fields, sync them back into a clean URL
+    syncUrlFromState();
+  </script>
+</body>
+
+</html>

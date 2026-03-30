@@ -1,0 +1,19 @@
+{
+  "name": "uncabled",
+  "version": "1.0.0",
+  "description": "Use your phone as a virtual camera for OBS, powered by WebRTC",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "Kavindu Jayarathne",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  }
+}
